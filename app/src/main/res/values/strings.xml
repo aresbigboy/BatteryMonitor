@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">电池监控</string>
+    <string name="history_title">24小时功率历史</string>
+</resources>

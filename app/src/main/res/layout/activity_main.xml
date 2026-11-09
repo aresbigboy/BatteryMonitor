@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAFAFA">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- 信息表格 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF">
+
+            <LinearLayout style="@style/RowEven">
+                <TextView style="@style/Label" android:text="电量" />
+                <TextView android:id="@+id/tv_level" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowOdd">
+                <TextView style="@style/Label" android:text="健康情况" />
+                <TextView android:id="@+id/tv_health" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowEven">
+                <TextView style="@style/Label" android:text="状态" />
+                <TextView android:id="@+id/tv_status" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowOdd">
+                <TextView style="@style/Label" android:text="电源" />
+                <TextView android:id="@+id/tv_source" style="@style/Value" android:text="Battery" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowEven">
+                <TextView style="@style/Label" android:text="技术" />
+                <TextView android:id="@+id/tv_tech" style="@style/Value" android:text="Li-ion" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowOdd">
+                <TextView style="@style/Label" android:text="温度" />
+                <TextView android:id="@+id/tv_temp" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowEven">
+                <TextView style="@style/Label" android:text="电压" />
+                <TextView android:id="@+id/tv_voltage" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowOdd">
+                <TextView style="@style/Label" android:text="电流" />
+                <TextView android:id="@+id/tv_current" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowEven">
+                <TextView style="@style/Label" android:text="循环次数" />
+                <TextView android:id="@+id/tv_cycle" style="@style/Value" android:text="--" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/RowOdd">
+                <TextView style="@style/Label" android:text="估算容量" />
+                <TextView android:id="@+id/tv_design" style="@style/Value" android:text="--" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 实时功率大字 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginTop="16dp"
+            android:background="#FFFFFF"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tv_power_big"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textSize="48sp"
+                android:textStyle="bold"
+                android:textColor="#1565C0" />
+
+            <TextView
+                android:id="@+id/tv_power_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textSize="16sp"
+                android:textColor="#616161"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 实时曲线 -->
+        <com.battery.monitor.PowerChartView
+            android:id="@+id/chart"
+            android:layout_width="match_parent"
+            android:layout_height="280dp"
+            android:layout_marginTop="12dp"
+            android:background="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="点击曲线查看历史"
+            android:textColor="#9E9E9E"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+</ScrollView>
