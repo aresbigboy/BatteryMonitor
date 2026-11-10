@@ -10,7 +10,8 @@ data class PowerSample(
     val powerMw: Float,
     val voltageMv: Int,
     val currentMa: Float,
-    val tempC: Float
+    val tempC: Float,
+    val marker: String = ""   // "full" = 已充满标记点
 )
 
 class BatteryDbHelper(ctx: Context) :
@@ -18,7 +19,7 @@ class BatteryDbHelper(ctx: Context) :
 
     companion object {
         const val DB_NAME = "battery_monitor.db"
-        const val DB_VERSION = 1
+        const val DB_VERSION = 2
         const val TABLE = "power_samples"
         const val HISTORY_WINDOW_MS = 24L * 60 * 60 * 1000   // 24h
         const val PRUNE_AFTER_MS = 48L * 60 * 60 * 1000      // 保留 48h
@@ -32,7 +33,8 @@ class BatteryDbHelper(ctx: Context) :
                 power_mw REAL NOT NULL,
                 voltage_mv INTEGER NOT NULL,
                 current_ma REAL NOT NULL,
-                temp_c REAL NOT NULL
+                temp_c REAL NOT NULL,
+                marker TEXT NOT NULL DEFAULT ''
             )""".trimIndent()
         )
         db?.execSQL("CREATE INDEX idx_ts ON $TABLE(ts)")
@@ -51,9 +53,9 @@ class BatteryDbHelper(ctx: Context) :
             put("voltage_mv", s.voltageMv)
             put("current_ma", s.currentMa)
             put("temp_c", s.tempC)
+            put("marker", s.marker)
         }
         db.insert(TABLE, null, cv)
-        // 顺手清理 48h 前的数据
         db.delete(TABLE, "ts < ?", arrayOf((s.ts - PRUNE_AFTER_MS).toString()))
     }
 
@@ -65,7 +67,7 @@ class BatteryDbHelper(ctx: Context) :
         val list = ArrayList<PowerSample>()
         val c = db.query(
             TABLE,
-            arrayOf("ts", "power_mw", "voltage_mv", "current_ma", "temp_c"),
+            arrayOf("ts", "power_mw", "voltage_mv", "current_ma", "temp_c", "marker"),
             "ts >= ?",
             arrayOf(from.toString()),
             null, null, "ts ASC"
@@ -78,7 +80,8 @@ class BatteryDbHelper(ctx: Context) :
                         powerMw = it.getFloat(1),
                         voltageMv = it.getInt(2),
                         currentMa = it.getFloat(3),
-                        tempC = it.getFloat(4)
+                        tempC = it.getFloat(4),
+                        marker = it.getString(5) ?: ""
                     )
                 )
             }

@@ -42,6 +42,7 @@ class SamplingService : Service() {
     }
 
     private lateinit var db: BatteryDbHelper
+    @Volatile private var lastFullCharged = false
     private var scheduler: ScheduledExecutorService? = null
 
     override fun onCreate() {
@@ -67,8 +68,24 @@ class SamplingService : Service() {
                         fullCharged = info.isFullCharged
                         if (i < READS_PER_SAMPLE - 1) Thread.sleep(READ_GAP_MS)
                     }
-                    // 100% 电插着充电器时不记录历史数据
-                    if (fullCharged) return@scheduleAtFixedRate
+                    // 100% 电插着充电器时: 刚进入充满写一条标记点, 之后跳过
+                    if (fullCharged) {
+                        if (!lastFullCharged) {
+                            db.insert(
+                                PowerSample(
+                                    ts = System.currentTimeMillis(),
+                                    powerMw = 0f,
+                                    voltageMv = lastV,
+                                    currentMa = 0f,
+                                    tempC = lastT,
+                                    marker = "full"
+                                )
+                            )
+                        }
+                        lastFullCharged = true
+                        return@scheduleAtFixedRate
+                    }
+                    lastFullCharged = false
                     powers.sort()
                     val medianPower = powers[powers.size / 2]
                     db.insert(

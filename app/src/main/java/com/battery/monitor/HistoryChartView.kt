@@ -183,6 +183,35 @@ class HistoryChartView @JvmOverloads constructor(
         canvas.drawPath(dischargePath, fillDischarge)
         canvas.drawPath(chargePath, chargePaint)
         canvas.drawPath(dischargePath, dischargePaint)
+
+        // 画"已充满"标记点
+        val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#2E7D32")
+            style = Paint.Style.FILL
+        }
+        val markerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#2E7D32")
+            textSize = 22f
+            isFakeBoldText = true
+        }
+        val sdfHM = SimpleDateFormat("HH:mm", Locale.getDefault())
+        for (s in samples) {
+            if (s.marker == "full") {
+                val x = xOf(s.ts)
+                // 画一个小圆点
+                canvas.drawCircle(x, yMid, 6f, markerPaint)
+                // 画虚线
+                val dashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.parseColor("#2E7D32")
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1f
+                    pathEffect = DashPathEffect(floatArrayOf(4f, 4f), 0f)
+                }
+                canvas.drawLine(x, plotT, x, plotB, dashPaint)
+                // 标注文字
+                canvas.drawText("已充满 ${sdfHM.format(Date(s.ts))}", x + 8f, plotT + 20f, markerTextPaint)
+            }
+        }
     }
 
     private fun fmtW(v: Float): String {
