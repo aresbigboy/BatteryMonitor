@@ -106,27 +106,35 @@ class MainActivity : AppCompatActivity() {
             tvDesign.text = if (info.designCapacityMah > 0) "${info.designCapacityMah} mAh" else "--"
 
             // 功率大字
-            if (info.settlingSeconds > 0) {
-                tvPowerBig.text = "稳定中"
-                tvPowerSub.text = "${info.settlingSeconds}s 后开始记录"
-                tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
-            } else {
-                val absP = Math.abs(info.powerMw)
-                val pStr = when {
-                    absP >= 1000f -> String.format(Locale.getDefault(), "%.2f W", info.powerMw / 1000f)
-                    else -> String.format(Locale.getDefault(), "%.0f mW", info.powerMw)
+            when {
+                info.isFullCharged -> {
+                    tvPowerBig.text = "已充满"
+                    tvPowerSub.text = "100% · 停止记录"
+                    tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
                 }
-                tvPowerBig.text = pStr
-                tvPowerSub.text = if (info.statusIsCharging) "充电中 ▲" else "放电中 ▼"
-                tvPowerBig.setTextColor(
-                    ContextCompat.getColor(
-                        this,
-                        if (info.statusIsCharging) R.color.charge_green else R.color.discharge_red
+                info.settlingSeconds > 0 -> {
+                    tvPowerBig.text = "稳定中"
+                    tvPowerSub.text = "${info.settlingSeconds}s 后开始记录"
+                    tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
+                }
+                else -> {
+                    val absP = Math.abs(info.powerMw)
+                    val pStr = when {
+                        absP >= 1000f -> String.format(Locale.getDefault(), "%.2f W", info.powerMw / 1000f)
+                        else -> String.format(Locale.getDefault(), "%.0f mW", info.powerMw)
+                    }
+                    tvPowerBig.text = pStr
+                    tvPowerSub.text = if (info.statusIsCharging) "充电中 ▲" else "放电中 ▼"
+                    tvPowerBig.setTextColor(
+                        ContextCompat.getColor(
+                            this,
+                            if (info.statusIsCharging) R.color.charge_green else R.color.discharge_red
+                        )
                     )
-                )
+                }
             }
 
-            chart.pushPoint(info.powerMw)
+            if (!info.isFullCharged) chart.pushPoint(info.powerMw)
         } catch (t: Throwable) {
             Log.w(TAG, "refresh failed", t)
         }

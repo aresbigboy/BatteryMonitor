@@ -59,12 +59,16 @@ class SamplingService : Service() {
                     // 连续读3次取中位数, 剔除传感器尖刺
                     val powers = ArrayList<Float>(READS_PER_SAMPLE)
                     var lastV = 0; var lastI = 0f; var lastT = 0f
+                    var fullCharged = false
                     repeat(READS_PER_SAMPLE) { i ->
                         val info = BatteryReader.read(this)
                         powers.add(info.powerMw)
                         lastV = info.voltageMv; lastI = info.currentMa; lastT = info.temperatureC
+                        fullCharged = info.isFullCharged
                         if (i < READS_PER_SAMPLE - 1) Thread.sleep(READ_GAP_MS)
                     }
+                    // 100% 电插着充电器时不记录历史数据
+                    if (fullCharged) return@scheduleAtFixedRate
                     powers.sort()
                     val medianPower = powers[powers.size / 2]
                     db.insert(

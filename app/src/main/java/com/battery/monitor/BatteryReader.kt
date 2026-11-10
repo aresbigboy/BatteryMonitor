@@ -20,7 +20,8 @@ object BatteryReader {
         val powerMw: Float,
         val cycleCount: Int,
         val designCapacityMah: Int,
-        val settlingSeconds: Int   // >0 表示正在稳定期
+        val settlingSeconds: Int,   // >0 表示正在稳定期
+        val isFullCharged: Boolean  // 100% 电插着充电器, 不记录功率
     )
 
     @Volatile private var cachedCycleCount: Int = -2
@@ -108,7 +109,9 @@ object BatteryReader {
         emaCurrentMa = currentMa
         if (settling) { currentMa = 0f }
 
-        val powerMw = if (!settling && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
+        // 100% 电插着充电器时, BMS 在做 topping charge 脉冲, 电流读数不可靠
+        val fullCharged = isCharging && levelPct >= 100
+        val powerMw = if (!settling && !fullCharged && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
 
         val cycleCount = readCycleCount(bm, br)
         val designMah = readDesignCapacity(br)
@@ -125,7 +128,8 @@ object BatteryReader {
             powerMw = powerMw,
             cycleCount = cycleCount,
             designCapacityMah = designMah,
-            settlingSeconds = ((settleLeftMs + 999) / 1000).toInt()
+            settlingSeconds = ((settleLeftMs + 999) / 1000).toInt(),
+            isFullCharged = fullCharged
         )
     }
 
@@ -155,10 +159,9 @@ object BatteryReader {
         return best
     }
 
-    /** 开屏时重置 EMA, 并触发短暂稳定期, 避免传感器跳变 */
+    /** 开屏时重置 EMA, 从当前读数重新开始跟踪 */
     fun resetSmoothing() {
         emaInitialized = false
-        settleUntilMs = System.currentTimeMillis() + 10000
     }
 
     fun registerStateListener(ctx: Context, onChanged: () -> Unit): BroadcastReceiver {
