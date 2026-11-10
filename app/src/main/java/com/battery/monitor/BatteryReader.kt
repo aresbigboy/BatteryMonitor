@@ -20,7 +20,6 @@ object BatteryReader {
         val powerMw: Float,
         val cycleCount: Int,
         val designCapacityMah: Int,
-        val settlingSeconds: Int,   // >0 表示正在稳定期
         val isFullCharged: Boolean  // 100% 电插着充电器, 不记录功率
     )
 
@@ -29,7 +28,6 @@ object BatteryReader {
     @Volatile private var emaCurrentMa: Float = 0f
     @Volatile private var emaInitialized: Boolean = false
     @Volatile private var lastIsCharging: Boolean = false
-    @Volatile private var settleUntilMs: Long = 0   // 充放电切换后的稳定期截止时间
 
     fun read(ctx: Context): BatteryInfo {
         val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -65,8 +63,6 @@ object BatteryReader {
             else -> "Unknown"
         }
 
-        val tech = br?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY) ?: "Li-ion"
-
         val sourceStr = when (pluggedTmp) {
             BatteryManager.BATTERY_PLUGGED_AC -> "AC"
             BatteryManager.BATTERY_PLUGGED_USB -> "USB"
@@ -95,11 +91,7 @@ object BatteryReader {
         if (isCharging != lastIsCharging) {
             lastIsCharging = isCharging
             emaInitialized = false
-            settleUntilMs = System.currentTimeMillis() + 5000   // 5秒稳定期
         }
-        // 插拔充电器后5秒内电流剧烈跳变, 不记录功率
-        val settleLeftMs = (settleUntilMs - System.currentTimeMillis()).coerceAtLeast(0)
-        val settling = settleLeftMs > 0
         currentMa = if (!emaInitialized) {
             emaInitialized = true
             currentMa
@@ -107,11 +99,10 @@ object BatteryReader {
             emaCurrentMa * 0.5f + currentMa * 0.5f
         }
         emaCurrentMa = currentMa
-        if (settling) { currentMa = 0f }
 
         // 100% 电插着充电器时, BMS 在做 topping charge 脉冲, 电流读数不可靠
         val fullCharged = isCharging && levelPct >= 100
-        val powerMw = if (!settling && !fullCharged && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
+        val powerMw = if (!fullCharged && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
 
         val cycleCount = readCycleCount(bm, br)
         val designMah = readDesignCapacity(br)
@@ -128,7 +119,6 @@ object BatteryReader {
             powerMw = powerMw,
             cycleCount = cycleCount,
             designCapacityMah = designMah,
-            settlingSeconds = ((settleLeftMs + 999) / 1000).toInt(),
             isFullCharged = fullCharged
         )
     }

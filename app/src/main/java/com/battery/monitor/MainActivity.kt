@@ -112,11 +112,6 @@ class MainActivity : AppCompatActivity() {
                     tvPowerSub.text = "100% · 停止记录"
                     tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
                 }
-                info.settlingSeconds > 0 -> {
-                    tvPowerBig.text = "稳定中"
-                    tvPowerSub.text = "${info.settlingSeconds}s 后开始记录"
-                    tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
-                }
                 else -> {
                     val absP = Math.abs(info.powerMw)
                     val pStr = when {
