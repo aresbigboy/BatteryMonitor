@@ -14,13 +14,13 @@ object BatteryReader {
         val status: String,
         val statusIsCharging: Boolean,
         val source: String,
-        val technology: String,
         val temperatureC: Float,
         val voltageMv: Int,
         val currentMa: Float,
         val powerMw: Float,
         val cycleCount: Int,
-        val designCapacityMah: Int
+        val designCapacityMah: Int,
+        val settlingSeconds: Int   // >0 表示正在稳定期
     )
 
     @Volatile private var cachedCycleCount: Int = -2
@@ -50,7 +50,8 @@ object BatteryReader {
             BatteryManager.BATTERY_STATUS_NOT_CHARGING -> "Not charging"
             else -> "Unknown"
         }
-        val isCharging = statusInt == BatteryManager.BATTERY_STATUS_CHARGING
+        val pluggedTmp = br?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1
+        val isCharging = pluggedTmp != 0 && pluggedTmp != -1
 
         val healthInt = br?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1) ?: -1
         val healthStr = when (healthInt) {
@@ -65,8 +66,7 @@ object BatteryReader {
 
         val tech = br?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY) ?: "Li-ion"
 
-        val plugged = br?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1
-        val sourceStr = when (plugged) {
+        val sourceStr = when (pluggedTmp) {
             BatteryManager.BATTERY_PLUGGED_AC -> "AC"
             BatteryManager.BATTERY_PLUGGED_USB -> "USB"
             BatteryManager.BATTERY_PLUGGED_WIRELESS -> "Wireless"
@@ -97,7 +97,8 @@ object BatteryReader {
             settleUntilMs = System.currentTimeMillis() + 5000   // 5秒稳定期
         }
         // 插拔充电器后5秒内电流剧烈跳变, 不记录功率
-        val settling = System.currentTimeMillis() < settleUntilMs
+        val settleLeftMs = (settleUntilMs - System.currentTimeMillis()).coerceAtLeast(0)
+        val settling = settleLeftMs > 0
         currentMa = if (!emaInitialized) {
             emaInitialized = true
             currentMa
@@ -118,13 +119,13 @@ object BatteryReader {
             status = statusStr,
             statusIsCharging = isCharging,
             source = sourceStr,
-            technology = tech ?: "Li-ion",
             temperatureC = temperatureC,
             voltageMv = voltageMv,
             currentMa = currentMa,
             powerMw = powerMw,
             cycleCount = cycleCount,
-            designCapacityMah = designMah
+            designCapacityMah = designMah,
+            settlingSeconds = ((settleLeftMs + 999) / 1000).toInt()
         )
     }
 
