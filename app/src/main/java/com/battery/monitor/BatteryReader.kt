@@ -28,6 +28,7 @@ object BatteryReader {
     @Volatile private var emaCurrentMa: Float = 0f
     @Volatile private var emaInitialized: Boolean = false
     @Volatile private var lastIsCharging: Boolean = false
+    @Volatile private var settleUntilMs: Long = 0   // 充放电切换后的稳定期截止时间
 
     fun read(ctx: Context): BatteryInfo {
         val bm = ctx.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -89,11 +90,14 @@ object BatteryReader {
         if (isCharging && currentMa < 0) currentMa = -currentMa
         else if (!isCharging && statusInt != BatteryManager.BATTERY_STATUS_FULL && currentMa > 0)
             currentMa = -currentMa
-        // EMA 平滑: 充放电状态切换时重置, alpha=0.5 平衡响应速度与平滑度
+        // EMA 平滑: 充放电状态切换时重置, alpha=0.5
         if (isCharging != lastIsCharging) {
             lastIsCharging = isCharging
             emaInitialized = false
+            settleUntilMs = System.currentTimeMillis() + 5000   // 5秒稳定期
         }
+        // 插拔充电器后5秒内电流剧烈跳变, 不记录功率
+        val settling = System.currentTimeMillis() < settleUntilMs
         currentMa = if (!emaInitialized) {
             emaInitialized = true
             currentMa
@@ -101,8 +105,9 @@ object BatteryReader {
             emaCurrentMa * 0.5f + currentMa * 0.5f
         }
         emaCurrentMa = currentMa
+        if (settling) { currentMa = 0f }
 
-        val powerMw = if (voltageMv > 0) voltageMv * currentMa / 1000f else 0f
+        val powerMw = if (!settling && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
 
         val cycleCount = readCycleCount(bm, br)
         val designMah = readDesignCapacity(br)
