@@ -155,6 +155,12 @@ object BatteryReader {
         return best
     }
 
+    /** 开屏时重置 EMA, 并触发短暂稳定期, 避免传感器跳变 */
+    fun resetSmoothing() {
+        emaInitialized = false
+        settleUntilMs = System.currentTimeMillis() + 10000
+    }
+
     fun registerStateListener(ctx: Context, onChanged: () -> Unit): BroadcastReceiver {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, i: Intent?) { onChanged() }

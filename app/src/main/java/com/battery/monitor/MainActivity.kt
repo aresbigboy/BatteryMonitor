@@ -80,8 +80,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        BatteryReader.resetSmoothing()
         handler.post(tick)
-        // 注册电池状态变化监听 (充电插入/拔出立即刷新)
         stateReceiver = BatteryReader.registerStateListener(this) { refresh() }
     }
 
