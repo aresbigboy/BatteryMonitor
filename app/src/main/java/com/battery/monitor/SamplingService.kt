@@ -27,7 +27,9 @@ class SamplingService : Service() {
         const val TAG = "SamplingService"
         const val CHANNEL_ID = "battery_monitor_sampling"
         const val NOTI_ID = 1001
-        const val SAMPLE_INTERVAL_S = 30L
+        const val SAMPLE_INTERVAL_S = 60L
+        const val READS_PER_SAMPLE = 3   // 每次采样连续读3次取中位数, 剔除尖刺
+        const val READ_GAP_MS = 2000L
 
         fun start(ctx: Context) {
             val i = Intent(ctx, SamplingService::class.java)
@@ -54,14 +56,24 @@ class SamplingService : Service() {
             scheduler = Executors.newSingleThreadScheduledExecutor()
             scheduler!!.scheduleAtFixedRate({
                 try {
-                    val info = BatteryReader.read(this)
+                    // 连续读3次取中位数, 剔除传感器尖刺
+                    val powers = ArrayList<Float>(READS_PER_SAMPLE)
+                    var lastV = 0; var lastI = 0f; var lastT = 0f
+                    repeat(READS_PER_SAMPLE) { i ->
+                        val info = BatteryReader.read(this)
+                        powers.add(info.powerMw)
+                        lastV = info.voltageMv; lastI = info.currentMa; lastT = info.temperatureC
+                        if (i < READS_PER_SAMPLE - 1) Thread.sleep(READ_GAP_MS)
+                    }
+                    powers.sort()
+                    val medianPower = powers[powers.size / 2]
                     db.insert(
                         PowerSample(
                             ts = System.currentTimeMillis(),
-                            powerMw = info.powerMw,
-                            voltageMv = info.voltageMv,
-                            currentMa = info.currentMa,
-                            tempC = info.temperatureC
+                            powerMw = medianPower,
+                            voltageMv = lastV,
+                            currentMa = lastI,
+                            tempC = lastT
                         )
                     )
                 } catch (t: Throwable) {

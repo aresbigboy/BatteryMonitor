@@ -72,7 +72,7 @@ class HistoryActivity : AppCompatActivity() {
         var sum = 0f
         var chargeEnergyWh = 0.0
         var dischargeEnergyWh = 0.0
-        val dtHours = 30.0 / 3600.0
+        val dtHours = 60.0 / 3600.0
 
         for (s in list) {
             if (s.powerMw > maxCharge) maxCharge = s.powerMw
@@ -91,7 +91,7 @@ class HistoryActivity : AppCompatActivity() {
             appendLine("累计充电能量: ${String.format(Locale.getDefault(), "%.2f Wh", chargeEnergyWh)}")
             append("累计放电能量: ${String.format(Locale.getDefault(), "%.2f Wh", dischargeEnergyWh)}")
         }
-        tvCount.text = "采样点数: ${list.size} (每 30 秒一次)"
+        tvCount.text = "采样点数: ${list.size} (每 60 秒一次)"
     }
 
     private fun fmtW(v: Float): String {
