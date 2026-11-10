@@ -1,5 +1,7 @@
 # BatteryMonitor · 安卓电池实时功率监控
 
+**版本: v1.1**
+
 轻量无广告的电池监控工具，参考 Device Info HW 电池页，额外加入实时功率大字和功率历史曲线。
 
 ## 功能
@@ -42,5 +44,3 @@
 - 设计容量在无 root 普通 App 下无法从 sysfs 读取（SELinux 封锁），用 charge_counter/level 估算
 - 功率公式: P(mW) = V(mV) × I(mA) / 1000
 - 电流读数经 EMA 平滑，不做硬钳位，不影响快充大电流显示
-
-> （注：部分内容由豆包 AI 生成）

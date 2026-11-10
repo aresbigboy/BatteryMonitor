@@ -133,22 +133,29 @@ class PowerChartView @JvmOverloads constructor(
             return plotL + (i.toFloat() / (MAX_POINTS - 1)) * plotW
         }
 
-        // 正半轴 (充电绿) 和负半轴 (放电红) 分别画
+        // 正半轴 (充电绿) 和负半轴 (放电红) 分别画, 方向切换时断开连线
         val chargePath = Path()
         val dischargePath = Path()
-        var chargeStarted = false
-        var dischargeStarted = false
+        var lastSign: Int = 0   // 0=零, 1=正, -1=负
         for (i in points.indices) {
             val x = xOf(i)
             val y = yOf(points[i])
-            if (points[i] >= 0f) {
-                if (!chargeStarted) { chargePath.moveTo(x, y); chargeStarted = true }
-                else chargePath.lineTo(x, y)
+            val sign = when {
+                points[i] > 0f -> 1
+                points[i] < 0f -> -1
+                else -> 0
             }
-            if (points[i] <= 0f) {
-                if (!dischargeStarted) { dischargePath.moveTo(x, y); dischargeStarted = true }
-                else dischargePath.lineTo(x, y)
+            when (sign) {
+                1 -> {
+                    if (lastSign == 1) chargePath.lineTo(x, y)
+                    else chargePath.moveTo(x, y)
+                }
+                -1 -> {
+                    if (lastSign == -1) dischargePath.lineTo(x, y)
+                    else dischargePath.moveTo(x, y)
+                }
             }
+            if (sign != 0) lastSign = sign
         }
         canvas.drawPath(chargePath, chargePaint)
         canvas.drawPath(dischargePath, dischargePaint)
