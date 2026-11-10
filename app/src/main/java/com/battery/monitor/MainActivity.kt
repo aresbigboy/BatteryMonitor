@@ -27,7 +27,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvHealth: TextView
     private lateinit var tvStatus: TextView
     private lateinit var tvSource: TextView
-    private lateinit var tvTech: TextView
     private lateinit var tvTemp: TextView
     private lateinit var tvVoltage: TextView
     private lateinit var tvCurrent: TextView
@@ -69,7 +68,6 @@ class MainActivity : AppCompatActivity() {
         tvHealth = findViewById(R.id.tv_health)
         tvStatus = findViewById(R.id.tv_status)
         tvSource = findViewById(R.id.tv_source)
-        tvTech = findViewById(R.id.tv_tech)
         tvTemp = findViewById(R.id.tv_temp)
         tvVoltage = findViewById(R.id.tv_voltage)
         tvCurrent = findViewById(R.id.tv_current)
@@ -101,7 +99,6 @@ class MainActivity : AppCompatActivity() {
             tvHealth.text = info.health
             tvStatus.text = info.status
             tvSource.text = info.source
-            tvTech.text = info.technology
             tvTemp.text = if (info.temperatureC > 0) String.format(Locale.getDefault(), "%.1f °C", info.temperatureC) else "--"
             tvVoltage.text = if (info.voltageMv > 0) "${info.voltageMv} mV" else "--"
             tvCurrent.text = String.format(Locale.getDefault(), "%.1f mA", info.currentMa)
