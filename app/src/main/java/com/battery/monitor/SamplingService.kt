@@ -43,6 +43,7 @@ class SamplingService : Service() {
 
     private lateinit var db: BatteryDbHelper
     @Volatile private var lastFullCharged = false
+    @Volatile private var chargedSinceMarker = false   // 距上次"已充满"标记后是否真的充过电
     private var scheduler: ScheduledExecutorService? = null
 
     override fun onCreate() {
@@ -61,16 +62,19 @@ class SamplingService : Service() {
                     val powers = ArrayList<Float>(READS_PER_SAMPLE)
                     var lastV = 0; var lastI = 0f; var lastT = 0f
                     var fullCharged = false
+                    var charging = false
                     repeat(READS_PER_SAMPLE) { i ->
                         val info = BatteryReader.read(this)
                         powers.add(info.powerMw)
                         lastV = info.voltageMv; lastI = info.currentMa; lastT = info.temperatureC
                         fullCharged = info.isFullCharged
+                        charging = info.statusIsCharging
                         if (i < READS_PER_SAMPLE - 1) Thread.sleep(READ_GAP_MS)
                     }
                     // 100% 电插着充电器时: 刚进入充满写一条标记点, 之后跳过
                     if (fullCharged) {
-                        if (!lastFullCharged) {
+                        // 中间真的充过电才写标记, 避免拔下再插上一次就多一个"已充满"点
+                        if (!lastFullCharged && chargedSinceMarker) {
                             db.insert(
                                 PowerSample(
                                     ts = System.currentTimeMillis(),
@@ -81,11 +85,13 @@ class SamplingService : Service() {
                                     marker = "full"
                                 )
                             )
+                            chargedSinceMarker = false
                         }
                         lastFullCharged = true
                         return@scheduleAtFixedRate
                     }
                     lastFullCharged = false
+                    if (charging) chargedSinceMarker = true
                     powers.sort()
                     val medianPower = powers[powers.size / 2]
                     db.insert(

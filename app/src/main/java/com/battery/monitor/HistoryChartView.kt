@@ -201,8 +201,13 @@ class HistoryChartView @JvmOverloads constructor(
             isFakeBoldText = true
         }
         val sdfHM = SimpleDateFormat("HH:mm", Locale.getDefault())
+        var lastLabelRight = -1000f   // 上一个标签的右边界, 用于避让重叠
+        var lastMarkerTs = 0L         // 上一个保留的标记时间, 用于过滤紧邻的重复标记
         for (s in samples) {
             if (s.marker == "full") {
+                // 10 分钟内的重复"已充满"(拔下又插上)直接不显示
+                if (lastMarkerTs > 0L && s.ts - lastMarkerTs < 10L * 60L * 1000L) continue
+                lastMarkerTs = s.ts
                 val x = xOf(s.ts)
                 // 画一个小圆点
                 canvas.drawCircle(x, yMid, 6f, markerPaint)
@@ -214,11 +219,14 @@ class HistoryChartView @JvmOverloads constructor(
                     pathEffect = DashPathEffect(floatArrayOf(4f, 4f), 0f)
                 }
                 canvas.drawLine(x, plotT, x, plotB, dashPaint)
-                // 标注文字
+                // 标注文字: 与上一个标签重叠时跳过, 避免文字糊在一起
                 val label = "已充满 ${sdfHM.format(Date(s.ts))}"
                 val tw = markerTextPaint.measureText(label)
                 val tx = if (x + 8f + tw > plotR) (x - 8f - tw).coerceAtLeast(plotL) else x + 8f
-                canvas.drawText(label, tx, plotT + 20f, markerTextPaint)
+                if (tx > lastLabelRight + 8f) {
+                    canvas.drawText(label, tx, plotT + 20f, markerTextPaint)
+                    lastLabelRight = tx + tw
+                }
             }
         }
     }
