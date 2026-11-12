@@ -4,6 +4,12 @@
 
 轻量无广告的电池监控工具，参考 Device Info HW 电池页，额外加入实时功率大字和功率历史曲线。
 
+## 界面预览
+
+| 充电实时功率 | 100% 已充满 | 历史曲线（含充满标记） |
+| :---: | :---: | :---: |
+| ![充电实时功率](docs/screenshots/01-charging.png) | ![已充满](docs/screenshots/02-full.png) | ![历史曲线](docs/screenshots/03-history.png) |
+
 ## 功能
 
 **主界面**
@@ -19,7 +25,7 @@
 - 默认显示最近 1 小时
 - 可切换 1h / 6h / 12h / 24h
 - 最大充/放电功率、平均功率、累计能量（Wh）
-- 进入 100% 充电时在曲线上画绿色标记点 + 虚线 + "已充满 HH:mm" 标注
+- 进入 100% 充电时在曲线上画绿色标记点 + 竖直虚线 + "已充满 HH:mm" 标注
 - 充满期间曲线断开不画线，拔掉充电器或电量下降后从新状态直接开始画
 
 **后台采样**
@@ -37,7 +43,21 @@
 - 充放电方向切换时自动重置 EMA
 - 后台采样中位数滤波：3 次读数取中位值
 - 充放电状态判断基于 `plugged != 0`（而非 `status == CHARGING`），兼容 100% 电时 status=FULL 的情况
-- SQLite schema v2，新增 `marker` 字段记录特殊事件点
+- SQLite schema v2，新增 `marker` 字段记录特殊事件点（`full` 表示已充满）
+
+## 目录结构
+
+```
+app/src/main/java/com/battery/monitor/
+├── BatteryReader.kt       电池数据读取、电流 EMA 平滑、循环次数与估算容量
+├── MainActivity.kt        主界面刷新、功率大字与状态提示
+├── HistoryActivity.kt     历史页、时间范围切换、统计信息
+├── PowerChartView.kt      实时功率曲线（方向切换断开连线）
+├── HistoryChartView.kt    历史功率曲线（含"已充满"标记点）
+├── SamplingService.kt     前台采样服务（60s + 中位数滤波）
+└── db/BatteryDbHelper.kt  SQLite 存储
+docs/screenshots/          界面截图
+```
 
 ## 编译
 
@@ -54,3 +74,4 @@
 - 电流读数经 EMA 平滑，不做硬钳位，不影响快充大电流显示
 - 后台采样用中位数滤波，避免息屏时传感器尖刺污染历史数据
 - 100% 电插着充电器时 BMS 在做 topping charge 脉冲补电，电流传感器读数不可靠，此时停止记录功率曲线和历史数据，仅保留一个时间标记点
+- `docs/screenshots/` 中的截图为布局与配色示意，实际数值以真机显示为准
