@@ -146,6 +146,12 @@ class HistoryChartView @JvmOverloads constructor(
         for (s in samples) {
             val x = xOf(s.ts)
             val y = yOf(s.powerMw)
+            // 遇到标记点(如已充满): 断开当前曲线, 之后从新状态重新起笔, 不跨段连线
+            if (s.marker.isNotEmpty()) {
+                if (cStart) { chargePath.lineTo(x, yMid); chargePath.close(); cStart = false }
+                if (dStart) { dischargePath.lineTo(x, yMid); dischargePath.close(); dStart = false }
+                continue
+            }
             if (s.powerMw >= 0f) {
                 if (!cStart) {
                     chargePath.moveTo(x, yMid)
@@ -209,7 +215,10 @@ class HistoryChartView @JvmOverloads constructor(
                 }
                 canvas.drawLine(x, plotT, x, plotB, dashPaint)
                 // 标注文字
-                canvas.drawText("已充满 ${sdfHM.format(Date(s.ts))}", x + 8f, plotT + 20f, markerTextPaint)
+                val label = "已充满 ${sdfHM.format(Date(s.ts))}"
+                val tw = markerTextPaint.measureText(label)
+                val tx = if (x + 8f + tw > plotR) (x - 8f - tw).coerceAtLeast(plotL) else x + 8f
+                canvas.drawText(label, tx, plotT + 20f, markerTextPaint)
             }
         }
     }
