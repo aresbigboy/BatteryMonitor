@@ -63,14 +63,18 @@ class SamplingService : Service() {
                     var lastV = 0; var lastI = 0f; var lastT = 0f
                     var fullCharged = false
                     var charging = false
+                    var currentValid = true
                     repeat(READS_PER_SAMPLE) { i ->
                         val info = BatteryReader.read(this)
                         powers.add(info.powerMw)
                         lastV = info.voltageMv; lastI = info.currentMa; lastT = info.temperatureC
                         fullCharged = info.isFullCharged
                         charging = info.statusIsCharging
+                        currentValid = info.currentValid
                         if (i < READS_PER_SAMPLE - 1) Thread.sleep(READ_GAP_MS)
                     }
+                    // 电流读数不可信时直接丢弃本次采样, 不污染历史
+                    if (!currentValid) return@scheduleAtFixedRate
                     // 100% 电插着充电器时: 刚进入充满写一条标记点, 之后跳过
                     if (fullCharged) {
                         // 中间真的充过电才写标记, 避免拔下再插上一次就多一个"已充满"点

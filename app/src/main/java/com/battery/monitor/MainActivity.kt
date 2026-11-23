@@ -101,7 +101,8 @@ class MainActivity : AppCompatActivity() {
             tvSource.text = info.source
             tvTemp.text = if (info.temperatureC > 0) String.format(Locale.getDefault(), "%.1f °C", info.temperatureC) else "--"
             tvVoltage.text = if (info.voltageMv > 0) "${info.voltageMv} mV" else "--"
-            tvCurrent.text = String.format(Locale.getDefault(), "%.1f mA", info.currentMa)
+            tvCurrent.text = if (info.currentValid)
+                String.format(Locale.getDefault(), "%.1f mA", info.currentMa) else "--"
             tvCycle.text = if (info.cycleCount > 0) info.cycleCount.toString() else "--"
             tvDesign.text = if (info.designCapacityMah > 0) "${info.designCapacityMah} mAh" else "--"
 
@@ -111,6 +112,11 @@ class MainActivity : AppCompatActivity() {
                     tvPowerBig.text = "已充满"
                     tvPowerSub.text = "100% · 停止记录"
                     tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.charge_green))
+                }
+                !info.currentValid -> {
+                    tvPowerBig.text = "--"
+                    tvPowerSub.text = "电流读取失败"
+                    tvPowerBig.setTextColor(ContextCompat.getColor(this, R.color.discharge_red))
                 }
                 else -> {
                     val absP = Math.abs(info.powerMw)
@@ -129,7 +135,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            if (!info.isFullCharged) chart.pushPoint(info.powerMw)
+            // 电流无效时不往曲线里塞 0, 避免画出假的平线
+            if (!info.isFullCharged && info.currentValid) chart.pushPoint(info.powerMw)
         } catch (t: Throwable) {
             Log.w(TAG, "refresh failed", t)
         }

@@ -20,8 +20,12 @@ object BatteryReader {
         val powerMw: Float,
         val cycleCount: Int,
         val designCapacityMah: Int,
-        val isFullCharged: Boolean  // 100% 电插着充电器, 不记录功率
+        val isFullCharged: Boolean,  // 100% 电插着充电器, 不记录功率
+        val currentValid: Boolean    // 电流传感器读数是否可信
     )
+
+    /** 电流物理上限(毫安): 超过即视为传感器异常值 */
+    private const val MAX_CURRENT_MA = 20000f
 
     @Volatile private var cachedCycleCount: Int = -2
     @Volatile private var cachedDesignMah: Int = -2
@@ -70,20 +74,12 @@ object BatteryReader {
             else -> "Battery"
         }
 
-        val rawCurrent = try {
-            val avg = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
-            if (avg != 0) avg else bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
-        } catch (t: Throwable) {
-            try { bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }
-            catch (_: Throwable) { -1 }
-        }
+        // 逐路取电流: AVERAGE 优先, 无效再试 NOW, 都无效则视为读取失败
+        val avgRaw = propOrNull(bm, BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)
+        val nowRaw = propOrNull(bm, BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        val currentValid = sanitizeCurrent(avgRaw) != null || sanitizeCurrent(nowRaw) != null
+        var currentMa = sanitizeCurrent(avgRaw) ?: sanitizeCurrent(nowRaw) ?: 0f
 
-        val absRaw = Math.abs(rawCurrent)
-        var currentMa = when {
-            rawCurrent == 0 -> 0f
-            absRaw < 10000 -> rawCurrent.toFloat()
-            else -> rawCurrent / 1000f
-        }
         if (isCharging && currentMa < 0) currentMa = -currentMa
         else if (!isCharging && statusInt != BatteryManager.BATTERY_STATUS_FULL && currentMa > 0)
             currentMa = -currentMa
@@ -92,17 +88,17 @@ object BatteryReader {
             lastIsCharging = isCharging
             emaInitialized = false
         }
-        currentMa = if (!emaInitialized) {
-            emaInitialized = true
+        currentMa = if (!emaInitialized || !currentValid) {
+            emaInitialized = currentValid
             currentMa
         } else {
             emaCurrentMa * 0.5f + currentMa * 0.5f
         }
-        emaCurrentMa = currentMa
+        if (currentValid) emaCurrentMa = currentMa
 
         // 100% 电插着充电器时, BMS 在做 topping charge 脉冲, 电流读数不可靠
         val fullCharged = isCharging && levelPct >= 100
-        val powerMw = if (!fullCharged && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
+        val powerMw = if (!fullCharged && currentValid && voltageMv > 0) voltageMv * currentMa / 1000f else 0f
 
         val cycleCount = readCycleCount(bm, br)
         val designMah = readDesignCapacity(br)
@@ -119,8 +115,30 @@ object BatteryReader {
             powerMw = powerMw,
             cycleCount = cycleCount,
             designCapacityMah = designMah,
-            isFullCharged = fullCharged
+            isFullCharged = fullCharged,
+            currentValid = currentValid
         )
+    }
+
+    /** 读 BatteryManager 的整型属性, 失败返回 null */
+    private fun propOrNull(bm: BatteryManager, prop: Int): Int? = try {
+        bm.getIntProperty(prop)
+    } catch (_: Throwable) {
+        null
+    }
+
+    /**
+     * 校验并换算电流值(mA):
+     * - 过滤 Integer.MAX_VALUE/MIN、-1 等传感器哨兵值
+     * - 大于 10000 的按 µA 折算成 mA
+     * - 超出 ±20A 物理范围的一律视为无效
+     */
+    private fun sanitizeCurrent(raw: Int?): Float? {
+        if (raw == null) return null
+        if (raw == 0 || raw == -1 || raw == Int.MAX_VALUE || raw == Int.MIN_VALUE) return null
+        val v = if (Math.abs(raw.toLong()) >= 10000L) raw / 1000f else raw.toFloat()
+        if (Math.abs(v) > MAX_CURRENT_MA) return null
+        return v
     }
 
     private fun readCycleCount(bm: BatteryManager, br: Intent?): Int {
